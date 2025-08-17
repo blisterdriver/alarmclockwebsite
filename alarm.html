@@ -1,84 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Simple Alarm Timer</title>
-  <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      margin-top: 100px;
-    }
-    input { width: 60px; text-align: center; }
-    button { margin: 5px; padding: 8px 15px; }
-    #time { font-size: 2em; margin: 20px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Web Alarm</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            transition: background-color 0.5s ease;
+        }
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin-top: 0;
+            color: #1a1a1a;
+        }
+        #timer-display {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #444;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input {
+            width: 60px;
+            padding: 10px;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin: 0 5px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        #set-btn {
+            background-color: #007bff;
+        }
+        #set-btn:hover {
+            background-color: #0056b3;
+        }
+        #stop-btn {
+            background-color: #dc3545;
+            display: none; /* Hidden by default */
+        }
+        #stop-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* The alarm animation */
+        .alarm-active {
+            animation: alarm-flash 1s infinite;
+        }
+        @keyframes alarm-flash {
+            0% { background-color: #f0f2f5; }
+            50% { background-color: #ff5252; }
+            100% { background-color: #f0f2f5; }
+        }
+    </style>
 </head>
 <body>
-  <h1>Alarm Timer</h1>
-  <p>
-    Minutes: <input type="number" id="minutes" value="0" min="0">
-    Seconds: <input type="number" id="seconds" value="10" min="0" max="59">
-  </p>
-  <button onclick="startTimer()">Start</button>
-  <button onclick="stopTimer()">Stop</button>
-  <div id="time">00:10</div>
 
-  <audio id="alarm-sound" loop>
-    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
-  </audio>
+    <div class="container">
+        <h1>Simple Web Alarm</h1>
+        <div id="timer-display">00:00</div>
+        <div class="input-group">
+            <input type="number" id="minutes-input" placeholder="MM" min="0" max="59">
+            <span>:</span>
+            <input type="number" id="seconds-input" placeholder="SS" min="0" max="59">
+        </div>
+        <button id="set-btn">Set Alarm</button>
+        <button id="stop-btn">Stop Alarm</button>
+    </div>
 
-  <script>
-    let timer;
-    let totalSeconds;
-    const display = document.getElementById("time");
-    const alarmSound = document.getElementById("alarm-sound");
+    <script>
+        // --- 1. GET HTML ELEMENTS ---
+        const timerDisplay = document.getElementById('timer-display');
+        const minutesInput = document.getElementById('minutes-input');
+        const secondsInput = document.getElementById('seconds-input');
+        const setBtn = document.getElementById('set-btn');
+        const stopBtn = document.getElementById('stop-btn');
 
-    function startTimer() {
-      const min = parseInt(document.getElementById("minutes").value) || 0;
-      const sec = parseInt(document.getElementById("seconds").value) || 0;
-      totalSeconds = min * 60 + sec;
+        // --- 2. PREPARE THE ALARM SOUND ---
+        // Using a reliable, free-to-use sound from a CDN
+        const alarmSound = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+        alarmSound.loop = true; // Make the alarm sound repeat
 
-      if (totalSeconds <= 0) return alert("Set a valid time!");
+        // --- 3. STATE VARIABLES ---
+        let countdownInterval; // To hold the interval function so we can clear it
 
-      clearInterval(timer);
-      updateDisplay();
+        // --- 4. CORE FUNCTIONS ---
 
-      timer = setInterval(() => {
-        totalSeconds--;
-        updateDisplay();
-        if (totalSeconds <= 0) {
-          clearInterval(timer);
-          triggerAlarm();
+        /**
+         * Starts the countdown timer.
+         * @param {number} totalSeconds - The total duration of the timer in seconds.
+         */
+        function startTimer(totalSeconds) {
+            // Clear any previous timer
+            clearInterval(countdownInterval);
+
+            let remainingTime = totalSeconds;
+
+            countdownInterval = setInterval(() => {
+                if (remainingTime <= 0) {
+                    clearInterval(countdownInterval);
+                    triggerAlarm();
+                    return;
+                }
+                
+                remainingTime--;
+                updateTimerDisplay(remainingTime);
+
+            }, 1000); // Run this function every 1 second (1000ms)
         }
-      }, 1000);
-    }
 
-    function stopTimer() {
-      clearInterval(timer);
-      alarmSound.pause();
-      alarmSound.currentTime = 0;
-    }
+        /**
+         * Triggers the visual and audio alarm.
+         */
+        function triggerAlarm() {
+            timerDisplay.textContent = "00:00";
+            document.body.classList.add('alarm-active'); // Start flashing background
+            alarmSound.play(); // Play the sound
+            
+            // Show the stop button and hide the set button
+            stopBtn.style.display = 'inline-block';
+            setBtn.style.display = 'none';
+        }
 
-    function updateDisplay() {
-      let m = Math.floor(totalSeconds / 60);
-      let s = totalSeconds % 60;
-      display.textContent = 
-        (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-    }
+        /**
+         * Stops the alarm and resets the interface.
+         */
+        function stopAlarm() {
+            document.body.classList.remove('alarm-active'); // Stop flashing
+            alarmSound.pause(); // Stop the sound
+            alarmSound.currentTime = 0; // Rewind the sound to the beginning
 
-    function triggerAlarm() {
-      alarmSound.play();
-      if ("vibrate" in navigator) navigator.vibrate([500, 200, 500]);
-      if (Notification.permission === "granted") {
-        new Notification("⏰ Time’s up!");
-      }
-    }
+            // Reset the UI
+            stopBtn.style.display = 'none';
+            setBtn.style.display = 'inline-block';
+            timerDisplay.textContent = "00:00";
+            minutesInput.value = '';
+            secondsInput.value = '';
+        }
 
-    // Ask notification permission on load
-    if ("Notification" in window) {
-      Notification.requestPermission();
-    }
-  </script>
+        /**
+         * Updates the H1 display with formatted time.
+         * @param {number} seconds - The remaining seconds.
+         */
+        function updateTimerDisplay(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+
+            // Pad with a leading zero if the number is less than 10
+            const displayMins = String(mins).padStart(2, '0');
+            const displaySecs = String(secs).padStart(2, '0');
+
+            timerDisplay.textContent = `${displayMins}:${displaySecs}`;
+        }
+
+
+        // --- 5. EVENT LISTENERS ---
+
+        // When the "Set Alarm" button is clicked
+        setBtn.addEventListener('click', () => {
+            const minutes = parseInt(minutesInput.value) || 0;
+            const seconds = parseInt(secondsInput.value) || 0;
+
+            const totalSeconds = (minutes * 60) + seconds;
+
+            if (totalSeconds > 0) {
+                startTimer(totalSeconds);
+                updateTimerDisplay(totalSeconds); // Show initial time immediately
+            } else {
+                alert("Please enter a valid time.");
+            }
+        });
+
+        // When the "Stop Alarm" button is clicked
+        stopBtn.addEventListener('click', stopAlarm);
+
+    </script>
 </body>
 </html>
